@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+    font-family: Gilroy-Bold;
+    src: url(../public/font/Gilroy/Gilroy-Bold-Rupee.woff2);
+}
+@font-face {
+    font-family: Gilroy-Medium;
+    src: url(../public/font/Gilroy/Gilroy-Medium-Rupee.woff2);
+}
+@font-face {
+    font-family: Gilroy-ExtraBold;
+    src: url(../public/font/Gilroy/Gilroy-ExtraBold-Rupee.woff2);
+}
+@font-face {
+    font-family: Gilroy-SemiBold;
+    src: url(../public/font/Gilroy/Gilroy-SemiBold-Rupee.woff2);
+}
+
+
+body {
+    font-family: Gilroy-Medium;
+}
