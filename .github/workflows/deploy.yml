@@ -1,134 +1,29 @@
-name: Unit Tests 🧪
+# documentation: https://help.github.com/en/articles/workflow-syntax-for-github-actions
+name: deploy tutorial (only on push to main branch)
 on:
-  pull_request:
-    branches:
-      - 'dev*'
-      - 'releases/v*'
   push:
-    branches:
-      - '*'
-    tags-ignore:
-      - '*.*'
+    branches: main
 jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install Yarn
-        run: npm install -g yarn
-
-      - name: Install and Test
-        run: |
-          yarn install --frozen-lockfile
-          yarn lint:check
-          yarn lint:format:check
-          yarn test
-
-      - name: Uploade CodeCov Report
-        uses: codecov/codecov-action@v4.6.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: checkout
+      uses: actions/checkout@v3
+      with:
+          fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
+    - name: set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
 
-      - name: Install Yarn
-        run: npm install -g yarn
+    - name: install mkdocs
+      run: |
+          pip install mkdocs mkdocs-material mkdocs-redirects mkdocs-git-revision-date-localized-plugin
+          mkdocs --version
 
-      - name: Build lib
-        run: |
-          yarn install --frozen-lockfile
-          yarn build
+    - name: build tutorial
+      run: mkdocs build --strict
 
-      - name: Rebuild production node_modules
-        run: |
-          yarn install --production --frozen-lockfile
-          ls node_modules
-
-      - name: artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: |
-            lib
-            node_modules
-
-  integration:
-    runs-on: ubuntu-latest
-    needs: build
-    strategy:
-      matrix:
-        branch: ['gh-pages', 'no-pages']
-        commit: ['singleCommit', 'add commits']
-      max-parallel: 1
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-
-      - name: Deploy
-        id: unmodified
-        uses: ./
-        with:
-          folder: integration
-          branch: ${{ matrix.branch }}
-          single-commit: ${{ matrix.commit == 'singleCommit' }}
-          dry-run: true
-
-      # Usually, this should be skipped, but if the upstream gh-pages
-      # branch doesn't match ours, it should still be a success.
-      - name: Check step output
-        run: |
-          [[ \
-          ${{steps.unmodified.outputs.deployment-status}} = skipped || \
-          ${{steps.unmodified.outputs.deployment-status}} = success \
-          ]]
-
-      - name: Tweak content to publish to existing branch
-        if: ${{ matrix.branch == 'gh-pages' }}
-        run: |
-          echo "<!-- just sayin -->" >> integration/index.html
-
-      - name: Deploy with modifications to existing branch
-        id: modified
-        uses: ./
-        if: ${{ matrix.branch == 'gh-pages' }}
-        with:
-          folder: integration
-          branch: ${{ matrix.branch }}
-          single-commit: ${{ matrix.commit == 'singleCommit' }}
-          dry-run: true
-
-      # The modified deployment should be a success, and not skipped.
-      - name: Check step output
-        if: ${{ matrix.branch == 'gh-pages' }}
-        run: |
-          [[ \
-          ${{steps.modified.outputs.deployment-status}} = success \
-          ]]
+    - name: deploy docs
+      run: mkdocs gh-deploy --force
